@@ -1,140 +1,266 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Presence Tracker</title>
 
-  <!-- Firebase SDKs -->
+  <!-- Firebase SDKs (Compat build for simpler syntax) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
-  <script>
-    // 🔹 Replace this with your own Firebase config
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT.firebaseapp.com",
-      projectId: "YOUR_PROJECT",
-      storageBucket: "YOUR_PROJECT.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    };
-
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    let today = new Date().toISOString().split('T')[0];
-
-    function loadData() {
-      document.getElementById("today-date").textContent = new Date().toLocaleDateString();
-
-      // 🔹 Real-time listener
-      db.collection("presence").doc(today).collection("names")
-        .orderBy("timestamp")
-        .onSnapshot((snapshot) => {
-          const people = snapshot.docs.map(doc => doc.data());
-          renderList(people);
-        });
-    }
-
-    async function addPerson() {
-      const nameInput = document.getElementById("name");
-      const name = nameInput.value.trim();
-      if (name !== "") {
-        const docRef = db.collection("presence").doc(today).collection("names").doc(name.toLowerCase());
-        const existing = await docRef.get();
-        if (!existing.exists) {
-          await docRef.set({
-            name: name,
-            timestamp: new Date().toLocaleTimeString()
-          });
-        } else {
-          alert("This name has already been added.");
-        }
-        nameInput.value = "";
-      }
-    }
-
-    function renderList(people) {
-      const list = document.getElementById("people-list");
-      list.innerHTML = "";
-      people.forEach((person) => {
-        const li = document.createElement("li");
-        li.style.margin = "8px 0";
-        li.innerHTML = `
-          <span>${person.name} - ✅ Present (${person.timestamp})</span>
-        `;
-        list.appendChild(li);
-      });
-    }
-
-    window.onload = loadData;
-  </script>
-
   <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #222;
+      --muted: #666;
+      --accent: #2563eb;
+    }
+    * { box-sizing: border-box; }
     body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background: #f5f5f5;
-    }
-    h1 {
-      text-align: center;
-      color: #333;
-    }
-    h2.date {
-      text-align: center;
-      color: #666;
-      margin-top: -10px;
-      font-size: 16px;
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
     }
     .container {
-      max-width: 500px;
-      margin: auto;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      max-width: 740px;
+      margin: 32px auto;
+      padding: 24px;
+      background: var(--card);
+      border-radius: 16px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.08);
     }
-    input, button {
-      padding: 10px;
+    h1 {
+      margin: 0 0 4px;
+      text-align: center;
+      font-size: 28px;
+    }
+    .date-line {
+      margin: 0 0 20px;
+      text-align: center;
+      color: var(--muted);
       font-size: 14px;
-      margin: 5px 0;
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 12px 14px;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 15px;
+      outline: none;
     }
     button {
+      padding: 12px 16px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
       cursor: pointer;
     }
-    ul {
-      list-style-type: none;
-      padding: 0;
+    ul { list-style: none; padding: 0; margin: 0; }
+    li.item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      border: 1px solid #eef0f5;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      background: #fff;
     }
+    .name { font-weight: 600; }
+    .status { color: #067e2e; font-weight: 600; }
+    .time { color: var(--muted); font-size: 12px; margin-left: 6px; }
+
     .gateway {
-      text-align: center;
-      margin-top: 20px;
+      margin-top: 28px;
+      border-top: 1px dashed #e5e7eb;
+      padding-top: 16px;
     }
-    iframe {
-      width: 100%;
-      height: 400px;
-      border: none;
-      border-radius: 8px;
+    .gateway h2 { font-size: 18px; margin: 0 0 8px; }
+    .gateway a { color: var(--accent); font-weight: 600; text-decoration: none; }
+    iframe { width: 100%; height: 380px; border: 0; border-radius: 12px; }
+
+    .count {
+      margin: 12px 0 18px;
+      color: var(--muted);
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Presence Tracker</h1>
-    <h2 class="date">Today: <span id="today-date"></span></h2>
-    <input type="text" id="name" placeholder="Enter your name" />
-    <button onclick="addPerson()">I'm Here</button>
+    <p class="date-line">Today: <span id="today-date">—</span></p>
+
+    <div class="row">
+      <input id="name" type="text" placeholder="Enter your name" />
+      <button id="hereBtn">I'm Here</button>
+    </div>
+
+    <div class="count">Total present: <span id="count">0</span></div>
     <ul id="people-list"></ul>
 
     <div class="gateway">
       <h2>Daily Devotional</h2>
-      <p>
-        <a href="https://alkitab.mobi/renungan/rh/" target="_blank">🔗 Open Renungan Harian</a>
-      </p>
-      <iframe src="https://alkitab.mobi/renungan/rh/"></iframe>
+      <p><a href="https://alkitab.mobi/renungan/rh/" target="_blank" rel="noopener">🔗 Open Renungan Harian</a></p>
+      <iframe src="https://alkitab.mobi/renungan/rh/" title="Renungan Harian"></iframe>
     </div>
   </div>
+
+  <script>
+    // ─────────────────────────────────────────────────────────────
+    // STEP 1 — Paste YOUR Firebase config below (from Firebase console)
+    // ─────────────────────────────────────────────────────────────
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyArFFh0kjHidNK8s9M3WZKclirglvq6h6g",
+  authDomain: "presence-tracker-astri-3.firebaseapp.com",
+  projectId: "presence-tracker-astri-3",
+  storageBucket: "presence-tracker-astri-3.firebasestorage.app",
+  messagingSenderId: "397297436285",
+  appId: "1:397297436285:web:6571143869429d5f66d314",
+  measurementId: "G-E9K253LSXM"
+};
+
+    // Initialize Firebase & Firestore
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // ─────────────────────────────────────────────────────────────
+    // STEP 2 — Helpers for date & safe text
+    // Use LOCAL date (not UTC) so midnight follows your timezone
+    // ─────────────────────────────────────────────────────────────
+    function getLocalDateKey() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`; // e.g., 2025-08-27
+    }
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // STEP 3 — UI elements
+    // ─────────────────────────────────────────────────────────────
+    const nameInput = document.getElementById('name');
+    const hereBtn = document.getElementById('hereBtn');
+    const listEl = document.getElementById('people-list');
+    const countEl = document.getElementById('count');
+    const dateEl = document.getElementById('today-date');
+
+    // Show a nice readable date string
+    function updateDateLine() {
+      dateEl.textContent = new Date().toLocaleDateString(undefined, {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // STEP 4 — Real-time listener for TODAY's list
+    // Re-attach automatically when the day rolls over
+    // ─────────────────────────────────────────────────────────────
+    let todayKey = getLocalDateKey();
+    let unsubscribe = null;
+
+    function startRealtimeForToday() {
+      updateDateLine();
+      if (unsubscribe) unsubscribe();
+      unsubscribe = db
+        .collection('presence')
+        .doc(todayKey)
+        .collection('names')
+        .orderBy('createdAt')
+        .onSnapshot((snap) => {
+          const people = snap.docs.map(d => d.data());
+          renderList(people);
+        }, (err) => {
+          console.error(err);
+          alert('Database error: ' + err.message);
+        });
+    }
+
+    // Check every 30s if the date changed (midnight rollover)
+    setInterval(() => {
+      const current = getLocalDateKey();
+      if (current !== todayKey) {
+        todayKey = current;
+        startRealtimeForToday();
+      }
+    }, 30000);
+
+    // ─────────────────────────────────────────────────────────────
+    // STEP 5 — Add name (with duplicate protection)
+    // Document ID is lowercased name → prevents duplicates
+    // createdAt uses serverTimestamp so times are consistent
+    // ─────────────────────────────────────────────────────────────
+    async function addPerson() {
+      const name = nameInput.value.trim();
+      if (!name) return;
+
+      const id = name.toLowerCase();
+      const ref = db.collection('presence').doc(todayKey).collection('names').doc(id);
+      const existing = await ref.get();
+      if (existing.exists) {
+        alert('This name has already been added.');
+        nameInput.value = '';
+        nameInput.focus();
+        return;
+      }
+
+      await ref.set({
+        name,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      nameInput.value = '';
+      nameInput.focus();
+    }
+
+    // Enter key submits
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addPerson();
+    });
+    hereBtn.addEventListener('click', addPerson);
+
+    // ─────────────────────────────────────────────────────────────
+    // STEP 6 — Render list
+    // ─────────────────────────────────────────────────────────────
+    function renderList(people) {
+      listEl.innerHTML = '';
+      people.forEach(p => {
+        const li = document.createElement('li');
+        li.className = 'item';
+        const timeText = p.createdAt && p.createdAt.toDate ? p.createdAt.toDate().toLocaleTimeString() : '';
+        li.innerHTML = `
+          <span class="name">${escapeHtml(p.name)}</span>
+          <span class="status">✅ Present <span class="time">${timeText ? '(' + timeText + ')' : ''}</span></span>
+        `;
+        listEl.appendChild(li);
+      });
+      countEl.textContent = String(people.length);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // STEP 7 — Kick everything off
+    // ─────────────────────────────────────────────────────────────
+    startRealtimeForToday();
+  </script>
 </body>
 </html>
+
