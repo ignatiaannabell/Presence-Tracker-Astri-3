@@ -4,32 +4,51 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Presence Tracker</title>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
   <script>
+    // 🔹 Replace this with your own Firebase config
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     let today = new Date().toISOString().split('T')[0];
-    let people = [];
 
     function loadData() {
-      const storedDate = localStorage.getItem('presence-date');
-      if (storedDate !== today) {
-        // New day → reset data
-        localStorage.setItem('presence-date', today);
-        localStorage.setItem('presence-' + today, JSON.stringify([]));
-        people = [];
-      } else {
-        people = JSON.parse(localStorage.getItem('presence-' + today)) || [];
-      }
-      // Show today's date
       document.getElementById("today-date").textContent = new Date().toLocaleDateString();
+
+      // 🔹 Real-time listener
+      db.collection("presence").doc(today).collection("names")
+        .orderBy("timestamp")
+        .onSnapshot((snapshot) => {
+          const people = snapshot.docs.map(doc => doc.data());
+          renderList(people);
+        });
     }
 
-    function addPerson() {
+    async function addPerson() {
       const nameInput = document.getElementById("name");
       const name = nameInput.value.trim();
       if (name !== "") {
-        if (!people.find(p => p.name.toLowerCase() === name.toLowerCase())) {
-          people.push({ name: name });
-          saveData();
-          renderList();
+        const docRef = db.collection("presence").doc(today).collection("names").doc(name.toLowerCase());
+        const existing = await docRef.get();
+        if (!existing.exists) {
+          await docRef.set({
+            name: name,
+            timestamp: new Date().toLocaleTimeString()
+          });
         } else {
           alert("This name has already been added.");
         }
@@ -37,29 +56,22 @@
       }
     }
 
-    function saveData() {
-      localStorage.setItem('presence-' + today, JSON.stringify(people));
-      localStorage.setItem('presence-date', today);
-    }
-
-    function renderList() {
+    function renderList(people) {
       const list = document.getElementById("people-list");
       list.innerHTML = "";
       people.forEach((person) => {
         const li = document.createElement("li");
         li.style.margin = "8px 0";
         li.innerHTML = `
-          <span>${person.name} - ✅ Present</span>
+          <span>${person.name} - ✅ Present (${person.timestamp})</span>
         `;
         list.appendChild(li);
       });
     }
 
-    window.onload = function() {
-      loadData();
-      renderList();
-    };
+    window.onload = loadData;
   </script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
