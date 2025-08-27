@@ -43,6 +43,13 @@
       color: var(--muted);
       font-size: 14px;
     }
+    h2.section-title {
+      margin-top: 24px;
+      margin-bottom: 12px;
+      font-size: 18px;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 4px;
+    }
     ul { list-style: none; padding: 0; margin: 0; }
     li.item {
       display: flex;
@@ -57,8 +64,6 @@
     .name { font-weight: 600; }
     .status.present { color: #067e2e; font-weight: 600; }
     .status.absent { color: #dc2626; font-weight: 600; }
-    .time { color: var(--muted); font-size: 12px; margin-left: 6px; }
-
     button {
       margin-left: 6px;
       padding: 6px 10px;
@@ -91,7 +96,15 @@
     <p class="date-line">Today: <span id="today-date">—</span></p>
 
     <div class="count">Total present: <span id="count">0</span></div>
-    <ul id="people-list"></ul>
+
+    <h2 class="section-title">Not Marked</h2>
+    <ul id="neutral-list"></ul>
+
+    <h2 class="section-title">Present</h2>
+    <ul id="present-list"></ul>
+
+    <h2 class="section-title">Absent</h2>
+    <ul id="absent-list"></ul>
 
     <div class="gateway">
       <h2>Daily Devotional</h2>
@@ -129,12 +142,12 @@
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
 
-    const listEl = document.getElementById('people-list');
+    const neutralEl = document.getElementById('neutral-list');
+    const presentEl = document.getElementById('present-list');
+    const absentEl = document.getElementById('absent-list');
     const countEl = document.getElementById('count');
 
-    // ─────────────────────────────────────────────────────────────
-    // Fixed roster
-    // ─────────────────────────────────────────────────────────────
+    // Roster
     const roster = [
       "Agnes Paramitha Nugroho",
       "Benita Joanna Natama Limbong",
@@ -168,29 +181,23 @@
       });
     }
 
-    // Render list
-    function renderList(data) {
-      listEl.innerHTML = "";
-      let presentCount = 0;
-      roster.forEach(name => {
-        const id = name.toLowerCase().replace(/\s+/g, "_");
-        const record = data[id] || {};
-        const statusText = record.status === "present"
-          ? "✅ Present"
-          : record.status === "absent"
-            ? "❌ Absent (" + (record.reason || "") + ")"
-            : "— Not Marked";
+    // Create row element
+    function makeRow(name, record, id) {
+      const li = document.createElement("li");
+      li.className = "item";
+      const statusText = record.status === "present"
+        ? "✅ Present"
+        : record.status === "absent"
+          ? "❌ Absent (" + (record.reason || "") + ")"
+          : "— Not Marked";
 
-        if (record.status === "present") presentCount++;
+      li.innerHTML = `
+        <span class="name">${name}</span>
+        <span class="status ${record.status || ""}">${statusText}</span>
+      `;
 
-        const li = document.createElement("li");
-        li.className = "item";
-        li.innerHTML = `
-          <span class="name">${name}</span>
-          <span class="status ${record.status || ""}">${statusText}</span>
-        `;
-
-        // Buttons
+      // Buttons only if not marked
+      if (!record.status) {
         const presentBtn = document.createElement("button");
         presentBtn.textContent = "Present";
         presentBtn.className = "present-btn";
@@ -206,16 +213,42 @@
 
         li.appendChild(presentBtn);
         li.appendChild(absentBtn);
-        listEl.appendChild(li);
+      }
+
+      return li;
+    }
+
+    // Render all sections
+    function renderLists(data) {
+      neutralEl.innerHTML = "";
+      presentEl.innerHTML = "";
+      absentEl.innerHTML = "";
+
+      let presentCount = 0;
+
+      roster.forEach(name => {
+        const id = name.toLowerCase().replace(/\s+/g, "_");
+        const record = data[id] || {};
+        const row = makeRow(name, record, id);
+
+        if (!record.status) {
+          neutralEl.appendChild(row);
+        } else if (record.status === "present") {
+          presentEl.appendChild(row);
+          presentCount++;
+        } else if (record.status === "absent") {
+          absentEl.appendChild(row);
+        }
       });
+
       countEl.textContent = presentCount;
     }
 
-    // Realtime listener
+    // Real-time Firestore listener
     db.collection("presence").doc(todayKey).collection("names").onSnapshot(snap => {
       const data = {};
       snap.forEach(doc => data[doc.id] = doc.data());
-      renderList(data);
+      renderLists(data);
     });
   </script>
 </body>
